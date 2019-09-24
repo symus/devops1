@@ -1,0 +1,69 @@
+version: '3'
+
+services:
+
+  db:
+    image: mysql:5.7
+    container_name: mysql-host
+    hostname: "mysql_container"
+    environment:
+      MYSQL_HOST: "mysql-host"
+      MYSQL_DATABASE: 'hello'
+      MYSQL_USER: 'root'
+      MYSQL_PASSOWRD: 'root'
+      MYSQL_ROOT_PASSWORD: 'root'
+    ports:
+      - '3306:3306'
+    volumes:
+     - ./create_database.sql:/docker-entrypoint-initdb.d/create_database.sql
+    #command: mysqld --init-file="create_database.sql"
+    expose:
+      - '3306'
+    labels:
+      NAME: "mysql-server"
+
+  rabbitmq-server:
+    image: rabbitmq:3-management
+    hostname: "rabitmq_container"
+    container_name: rabbitmq
+    hostname: "rabbitmq-server"
+    ports:
+      - "15672:15672"
+      - "5672:5672"
+    expose:
+      - "5672"
+      - "15672"
+    labels:
+      NAME: "rabbitmq-server"
+
+  hello-python:
+    build: ./hello-python
+    hostname: "producer_container"
+    container_name: hello_python_producer
+    ports:
+      - 5001:8000
+    environment:
+      RABBITMQ_HOST: "rabbitmq-server"
+      RABBITMQ_PORT: "5672"
+      RABBITMQ_QUEUE: "hello"
+    depends_on:
+      - rabbitmq-server
+
+  hello-node:
+    build: ./hello-node
+    hostname: "consumer_container"
+    container_name: hello_node_consumer
+    environment:
+      RABBITMQ_HOST: "rabbitmq-server"
+      RABBITMQ_PORT: "5672"
+      RABBITMQ_QUEUE: "hello"
+      MYSQL_HOST: "mysql-host"
+      MYSQL_USER: "root"
+      MYSQL_PASSWORD: "root"
+      MYSQL_DB: "hello"
+    depends_on:
+      - rabbitmq-server
+      - db
+      - hello-python
+    links:
+      - db 
